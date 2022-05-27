@@ -1,0 +1,164 @@
+#include <SPI.h>
+#include <Wire.h>
+#include <TFT.h>
+
+#define cs   10
+#define rst  8
+#define dc   9
+
+const char P1_Btn_L = 7;
+const char P1_Btn_R = 6;
+const char P2_Btn_L = 5;
+const char P2_Btn_R = 4;
+bool pressed = false;
+bool was_pressed = false;
+
+int paddleX = 1;
+int paddleY = 0;
+int oldPaddleX, oldPaddleY;
+
+int paddleX2 = 1;
+int paddleY2 = 0;
+int oldPaddleX2, oldPaddleY2;
+
+int ballDirectionX = 1;
+int ballDirectionY = 1;
+int ballSpeed = 5;
+
+int ballX , ballY , oldBallX, oldBallY;
+int myWidth, myHeight;
+TFT TFTscreen = TFT(cs, dc, rst);
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(P1_Btn_L, INPUT_PULLUP);
+  pinMode(P1_Btn_R, INPUT_PULLUP);
+
+  pinMode(P2_Btn_L, INPUT_PULLUP);
+  pinMode(P2_Btn_R, INPUT_PULLUP);
+
+
+  TFTscreen.begin();
+  TFTscreen.background(0, 0, 0);
+
+  myWidth = TFTscreen.width();
+  myHeight = TFTscreen.height();
+  ballX = TFTscreen.width() / 2;
+  ballY = TFTscreen.height() / 2;
+  oldBallX = ballX;
+  oldBallY = ballY;
+
+
+  paddleX = 1;
+  paddleY = TFTscreen.height() / 2 - 20;
+  oldPaddleX = paddleX;
+  oldPaddleY = paddleY;
+
+  paddleX2 = TFTscreen.width() - 5;
+  paddleY2 = TFTscreen.height() / 2 - 20;
+  oldPaddleX2 = paddleX2;
+  oldPaddleY2 = paddleY2;
+}
+
+void loop() {
+  bool currentState11 = digitalRead(P1_Btn_L);
+  bool currentState12 = digitalRead(P1_Btn_R);
+  bool currentState21 = digitalRead(P2_Btn_L);
+  bool currentState22 = digitalRead(P2_Btn_R);
+  was_pressed = false;
+  if (currentState11 == pressed) {
+    Serial.println("P1 stanga");
+    oldPaddleY = paddleY;
+    if(paddleY < TFTscreen.height() - 40){
+      paddleY = paddleY + 1;
+    }
+    was_pressed = true;
+  }
+
+  if (currentState12 == pressed) {
+    Serial.println("P1 dreapta");
+    oldPaddleY = paddleY;
+    if(paddleY > 0){
+      paddleY = paddleY - 1;
+    }
+    was_pressed = true;
+  }
+  if (currentState21 == pressed) {
+    Serial.println("P2 stanga");
+    oldPaddleY2 = paddleY2;
+    if(paddleY2 < TFTscreen.height() - 40){
+      paddleY2 = paddleY2 + 1;
+    }
+    was_pressed = true;
+  }
+
+  if (currentState22 == pressed) {
+    Serial.println("P2 dreapta");
+    oldPaddleY2 = paddleY2;
+    if(paddleY2 > 0){
+      paddleY2 = paddleY2 - 1;
+    }
+    was_pressed = true;
+  }
+
+  TFTscreen.fill(0, 0, 0);
+  if (oldPaddleY != paddleY) {
+    TFTscreen.rect(oldPaddleX, oldPaddleY, 5, 40);
+  }
+  if (oldPaddleY2 != paddleY2) {
+    TFTscreen.rect(oldPaddleX2, oldPaddleY2, 5, 40);
+  }
+  TFTscreen.fill(255, 255, 255);
+  TFTscreen.rect(paddleX, paddleY, 5, 40);
+  TFTscreen.rect(paddleX2, paddleY2, 5, 40);
+  
+  if (millis() % ballSpeed < 2) {
+    moveBall();
+  }
+ 
+}
+
+void moveBall() {
+
+  if (ballY > TFTscreen.height() - 5 || ballY < 0) {
+    ballDirectionY = -ballDirectionY;
+  }
+
+  if (inPaddle(ballX, ballY, paddleX, paddleY, 5, 40)) {
+    ballDirectionX = -ballDirectionX;
+    ballDirectionY = -ballDirectionY;
+  }
+  if (inPaddle(ballX, ballY, paddleX2, paddleY2, 5, 40)) {
+    ballDirectionX = -ballDirectionX;
+    ballDirectionY = -ballDirectionY;
+  }
+  
+   ballX += ballDirectionX;
+   ballY += ballDirectionY;
+  TFTscreen.fill(0, 0, 0);
+
+  if (oldBallX != ballX || oldBallY != ballY) {
+    TFTscreen.rect(oldBallX, oldBallY, 5, 5);
+  }
+
+
+  TFTscreen.fill(255, 255, 255);
+  TFTscreen.rect(ballX, ballY, 5, 5);
+
+  oldBallX = ballX;
+  oldBallY = ballY;
+
+}
+
+
+
+boolean inPaddle(int x, int y, int rectX, int rectY, int rectWidth, int rectHeight) {
+  boolean result = false;
+
+  if ((x >= rectX && x <= (rectX + rectWidth)) &&
+      (y >= rectY && y <= (rectY + rectHeight))) {
+    result = true;
+  }
+
+  return result;
+}
